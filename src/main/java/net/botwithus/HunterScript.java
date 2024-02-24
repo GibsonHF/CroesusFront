@@ -2,6 +2,7 @@ package net.botwithus;
 
 import net.botwithus.api.game.hud.inventories.Backpack;
 import net.botwithus.internal.scripts.ScriptDefinition;
+import net.botwithus.rs3.events.impl.SkillUpdateEvent;
 import net.botwithus.rs3.game.Client;
 import net.botwithus.rs3.game.Distance;
 import net.botwithus.rs3.game.actionbar.ActionBar;
@@ -12,6 +13,7 @@ import net.botwithus.rs3.game.queries.results.EntityResultSet;
 import net.botwithus.rs3.game.scene.entities.characters.npc.Npc;
 import net.botwithus.rs3.game.scene.entities.characters.player.LocalPlayer;
 import net.botwithus.rs3.game.scene.entities.object.SceneObject;
+import net.botwithus.rs3.game.skills.Skills;
 import net.botwithus.rs3.script.Execution;
 import net.botwithus.rs3.script.LoopingScript;
 import net.botwithus.rs3.script.TickingScript;
@@ -27,9 +29,11 @@ public class HunterScript extends TickingScript {
     public boolean runScript = false;
 
     public int actionTick = 0;
+    public int xpGained;
     private BotState botState = BotState.FIND_GUARD;
     private Npc currentTarget = null;
     private List<String> targetNpcs = Arrays.asList("Decaying Lumbridge guard", "Decaying Varrock guard");
+    private int levelsGained;
 
     enum BotState {
         FIND_GUARD,
@@ -42,7 +46,13 @@ public class HunterScript extends TickingScript {
     }
 
     public boolean onInitialize() {
-
+        subscribe(SkillUpdateEvent.class, skillUpdateEvent -> {
+            if (skillUpdateEvent.getId() == Skills.HUNTER.getId()) {
+                xpGained += (skillUpdateEvent.getExperience() - skillUpdateEvent.getOldExperience());
+                if (skillUpdateEvent.getOldActualLevel() < skillUpdateEvent.getActualLevel())
+                    levelsGained++;
+            }
+        });
         return super.onInitialize();
     }
 
@@ -120,7 +130,7 @@ public class HunterScript extends TickingScript {
 
     private boolean isEnriched(Npc npc) {
         int id = npc.getConfigType().getId();
-        return id == 28418 || id == 28421 || id == 28415 || id == 28424 || id == 28417 || id == 28414 || id == 28423 || id == 28420;
+        return id == 28418 || id == 28421 || id == 28415 || id == 28424;
     }
 
     private boolean isNonEnriched(Npc npc) {
@@ -137,30 +147,42 @@ public class HunterScript extends TickingScript {
                 botState = botState.HARVEST_GUARD;
                 return;
             } else if (isNonEnriched(interactingNpc)) {
-
                 println("Continuing to interact with current guard");
                 botState = BotState.HARVEST_GUARD;
                 return;
-        }
+            }
         }
 
+        // First, try to find an enriched guard
         for (String npcName : targetNpcs) {
             EntityResultSet<Npc> sceneObjectQuery = NpcQuery.newQuery().name(npcName).results();
-            Npc guard = sceneObjectQuery.nearest();
-            if(isEnriched(guard)) {
-                if (guard != null) {
-                    if(localPlayer.getAnimationId() != 6605) {
-                        guard.interact("Gather");
-                        println("Found new guard");
-                    }
-
-                    botState = BotState.HARVEST_GUARD;
-                    break;
+            Npc guard = sceneObjectQuery.stream().filter(this::isEnriched).findFirst().orElse(null);
+            if(guard != null) {
+                if(localPlayer.getAnimationId() != 6605) {
+                    guard.interact("Gather");
+                    println("Found new enriched guard");
                 }
+
+                botState = BotState.HARVEST_GUARD;
+                return;
+            }
+        }
+
+        // If no enriched guard is found, try to find a non-enriched guard
+        for (String npcName : targetNpcs) {
+            EntityResultSet<Npc> sceneObjectQuery = NpcQuery.newQuery().name(npcName).results();
+            Npc guard = sceneObjectQuery.stream().filter(this::isNonEnriched).findFirst().orElse(null);
+            if(guard != null) {
+                if(localPlayer.getAnimationId() != 6605) {
+                    guard.interact("Gather");
+                    println("Found new non-enriched guard");
+                }
+
+                botState = BotState.HARVEST_GUARD;
+                return;
             }
         }
     }
-
 
 
     public BotState getBotState() {
