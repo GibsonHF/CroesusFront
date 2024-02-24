@@ -30,7 +30,6 @@ public class HunterScript extends TickingScript {
     private BotState botState = BotState.FIND_GUARD;
     private Npc currentTarget = null;
     private List<String> targetNpcs = Arrays.asList("Decaying Lumbridge guard", "Decaying Varrock guard");
-    private List<Integer> targetindex = Arrays.asList(28418, 28421, 28415, 28424, 28417);
 
     enum BotState {
         FIND_GUARD,
@@ -106,8 +105,9 @@ public class HunterScript extends TickingScript {
         }
 
         Npc interactingNpc = (Npc) localPlayer.getTarget();
-        if(interactingNpc == null || !interactingNpc.validate() || !targetNpcs.contains(interactingNpc.getName()) || !isEnriched(interactingNpc)) {
+        if(interactingNpc == null || !interactingNpc.validate() || !isEnriched(interactingNpc)) {
             findGuard(localPlayer);
+            //!targetNpcs.contains(interactingNpc.getName())
             return;
         }
 
@@ -120,15 +120,28 @@ public class HunterScript extends TickingScript {
 
     private boolean isEnriched(Npc npc) {
         int id = npc.getConfigType().getId();
-        return id == 28418 || id == 28421 || id == 28415 || id == 28424;
+        return id == 28418 || id == 28421 || id == 28415 || id == 28424 || id == 28417 || id == 28414 || id == 28423 || id == 28420;
+    }
+
+    private boolean isNonEnriched(Npc npc) {
+        int id = npc.getConfigType().getId();
+        return id == 28417 || id == 28414 || id == 28423 || id == 28420;
     }
 
     public void findGuard(LocalPlayer localPlayer) {
         Npc interactingNpc = (Npc) localPlayer.getTarget();
-        if(interactingNpc != null && interactingNpc.validate() && targetNpcs.contains(interactingNpc.getName()) && isEnriched(interactingNpc)) {
-            println("Continuing to interact with current guard");
-            botState = BotState.HARVEST_GUARD;
-            return;
+        if(interactingNpc != null && interactingNpc.validate() && targetNpcs.contains(interactingNpc.getName()))
+        {
+            if (isEnriched(interactingNpc)) {
+                println("Continuing to interact with current guard");
+                botState = botState.HARVEST_GUARD;
+                return;
+            } else if (isNonEnriched(interactingNpc)) {
+
+                println("Continuing to interact with current guard");
+                botState = BotState.HARVEST_GUARD;
+                return;
+        }
         }
 
         for (String npcName : targetNpcs) {
