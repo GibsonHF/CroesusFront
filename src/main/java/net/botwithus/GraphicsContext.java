@@ -11,7 +11,7 @@ import java.text.NumberFormat;
 public class GraphicsContext extends ScriptGraphicsContext {
 
     private HunterScript script;
-    public int ConstructionXPGained = 0;
+    public int HunterXPGained = 0;
     public int XPStart;
 
     public GraphicsContext(ScriptConsole scriptConsole, HunterScript script) {
@@ -29,7 +29,7 @@ public class GraphicsContext extends ScriptGraphicsContext {
                     script.runScript = ImGui.Checkbox("Run Script", script.runScript);
                     ImGui.Text("My scripts state is: " + script.getBotState());
                     if(ImGui.Button("Reset XP gained")) {
-                        ConstructionXPGained = 0;
+                        HunterXPGained = 0;
                         script.xpGained = 0;
                         XPStart = Skills.HUNTER.getSkill().getExperience();
                     }
@@ -46,11 +46,11 @@ public class GraphicsContext extends ScriptGraphicsContext {
 
     public String calculateConstructionXPGained() {
         // Calculate the Construction XP gained
-        ConstructionXPGained = Skills.CONSTRUCTION.getSkill().getExperience() - XPStart;
+        HunterXPGained = Skills.HUNTER.getSkill().getExperience() - XPStart;
 
         // Format the XP gained with commas for thousands and a decimal point
         NumberFormat numberFormat = NumberFormat.getInstance();
-        String formattedXpGained = numberFormat.format(ConstructionXPGained);
+        String formattedXpGained = numberFormat.format(HunterXPGained);
 
         return formattedXpGained;
     }
