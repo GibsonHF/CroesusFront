@@ -51,6 +51,8 @@ public class GraphicsContext extends ScriptGraphicsContext {
 
                     }
                     ImGui.Text("My scripts state is: " + script.getBotState());
+                    ImGui.Text("Script Runtime: " + script.getRunTime());
+                    ImGui.Text("Average XP per hour: " + calculateAverageXPPerHour() + " XP");
 
                     ImGui.EndTabItem();
                 }
@@ -70,6 +72,19 @@ public class GraphicsContext extends ScriptGraphicsContext {
         String formattedXpGained = numberFormat.format(HunterXPGained);
 
         return formattedXpGained;
+    }
+
+    public String calculateAverageXPPerHour() {
+        // Calculate the average XP per hour
+        long runTimeInMilliseconds = System.currentTimeMillis() - script.startTime;
+        double runTimeInHours = runTimeInMilliseconds / 1000.0 / 60.0 / 60.0; // Convert runtime from milliseconds to hours
+        int xpPerHour = (int) (HunterXPGained / runTimeInHours);
+
+        // Format the XP per hour with commas for thousands and a decimal point
+        NumberFormat numberFormat = NumberFormat.getInstance();
+        String formattedXpPerHour = numberFormat.format(xpPerHour);
+
+        return formattedXpPerHour;
     }
 
     public void handleCheckboxSelection(String checkboxName) {

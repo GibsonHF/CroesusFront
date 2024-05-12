@@ -45,12 +45,23 @@ public class CroesusFrontScript extends LoopingScript {
     public boolean woodcutting;
     public boolean fishing;
 
+    public long startTime;
+
     private List<GuardDetails> guardDetailsList = Arrays.asList(
             new GuardDetails(Arrays.asList("Moulding Varrock guard", "Moulding Lumbridge guard"), Arrays.asList(121760, 121763, 121766, 121769), Arrays.asList(121759, 121762, 121765, 121768), "Mine"),
             new GuardDetails(Arrays.asList("Dead Lumbridge guard", "Dead Varrock guard"), Arrays.asList(121748, 121751, 121754, 121757), Arrays.asList(121747, 121750, 121753, 121756), "Gather"),
             new GuardDetails(Arrays.asList("Colonised Varrock guard", "Colonised Lumbridge guard"), Arrays.asList(28427, 28430, 28433, 28436), Arrays.asList(28426, 28429, 28432, 28435), "Catch"),
             new GuardDetails(Arrays.asList("Decaying Lumbridge guard", "Decaying Varrock guard"), Arrays.asList(28418, 28421, 28415, 28424), Arrays.asList(28417, 28414, 28423, 28420), "Gather")
     );
+
+    public String getRunTime() {
+        long time = System.currentTimeMillis() - startTime;
+        long seconds = time / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        return String.format("%02d:%02d:%02d", hours, minutes % 60, seconds % 60);
+    }
+
     enum BotState {
         FIND_GUARD,
         DROP_SPORES, HARVEST_GUARD
@@ -59,6 +70,7 @@ public class CroesusFrontScript extends LoopingScript {
     public CroesusFrontScript(String s, ScriptConfig scriptConfig, ScriptDefinition scriptDefinition) {
         super(s, scriptConfig, scriptDefinition);
         this.loopDelay = 550;
+        startTime = System.currentTimeMillis();
         this.sgc = new GraphicsContext(getConsole(), this);
     }
 
@@ -141,18 +153,13 @@ public class CroesusFrontScript extends LoopingScript {
             return null;
         }
     }
-    public static double calculateDistance(Coordinate c1, Coordinate c2) {
-        int dx = c2.getX() - c1.getX();
-        int dy = c2.getY() - c1.getY();
-        return Math.sqrt(dx * dx + dy * dy);
-    }
     private boolean findAndInteractWithGuard(LocalPlayer localPlayer, GuardDetails guardDetails) {
         for (String npcName : guardDetails.getNames()) {
             if (fishing || hunter) { // Assuming all NPCs have "guard" in their name
                 EntityResultSet<Npc> enrichedNpcQuery = NpcQuery.newQuery().name(npcName).results();
                 Npc enrichedGuard = enrichedNpcQuery.stream()
                         .filter(npc -> guardDetails.getEnrichedNpcIds().contains(npc.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(npc -> calculateDistance(npc.getCoordinate(), localPlayer.getCoordinate())))
+                        .min(Comparator.comparingDouble(npc -> npc.distanceTo(localPlayer.getCoordinate())))
                         .orElse(null);
                 if (enrichedGuard != null) {
                     interactWithNpc(enrichedGuard, guardDetails.getAction());
@@ -163,7 +170,7 @@ public class CroesusFrontScript extends LoopingScript {
                 EntityResultSet<Npc> nonEnrichedNpcQuery = NpcQuery.newQuery().name(npcName).results();
                 Npc nonEnrichedGuard = nonEnrichedNpcQuery.stream()
                         .filter(npc -> guardDetails.getNonEnrichedNpcIds().contains(npc.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(npc -> calculateDistance(npc.getCoordinate(), localPlayer.getCoordinate())))
+                        .min(Comparator.comparingDouble(npc -> npc.distanceTo(localPlayer.getCoordinate())))
                         .orElse(null);
                 if (nonEnrichedGuard != null) {
                     interactWithNpc(nonEnrichedGuard, guardDetails.getAction());
@@ -174,7 +181,7 @@ public class CroesusFrontScript extends LoopingScript {
                 EntityResultSet<SceneObject> enrichedSceneObjectQuery = SceneObjectQuery.newQuery().name(npcName).results();
                 SceneObject enrichedGuard = enrichedSceneObjectQuery.stream()
                         .filter(sceneObject -> guardDetails.getEnrichedNpcIds().contains(sceneObject.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(sceneObject -> calculateDistance(sceneObject.getCoordinate(), localPlayer.getCoordinate())))
+                        .min(Comparator.comparingDouble(sceneObject -> sceneObject.distanceTo(localPlayer.getCoordinate())))
                         .orElse(null);
                 if (enrichedGuard != null) {
                     interactWithSceneObject(enrichedGuard, guardDetails.getAction());
@@ -185,7 +192,7 @@ public class CroesusFrontScript extends LoopingScript {
                 EntityResultSet<SceneObject> nonEnrichedSceneObjectQuery = SceneObjectQuery.newQuery().name(npcName).results();
                 SceneObject nonEnrichedGuard = nonEnrichedSceneObjectQuery.stream()
                         .filter(sceneObject -> guardDetails.getNonEnrichedNpcIds().contains(sceneObject.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(sceneObject -> calculateDistance(sceneObject.getCoordinate(), localPlayer.getCoordinate())))
+                        .min(Comparator.comparingDouble(sceneObject -> sceneObject.distanceTo(localPlayer.getCoordinate())))
                         .orElse(null);
                 if (nonEnrichedGuard != null) {
                     interactWithSceneObject(nonEnrichedGuard, guardDetails.getAction());
