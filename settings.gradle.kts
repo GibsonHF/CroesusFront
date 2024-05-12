@@ -1,2 +1,2 @@
-rootProject.name = "Croesus Front Bot"
+rootProject.name = "CroesusFrontBot"
 
