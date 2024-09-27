@@ -2,28 +2,42 @@ package me.gibson;
 
 import net.botwithus.api.game.hud.inventories.Backpack;
 import net.botwithus.internal.scripts.ScriptDefinition;
+import net.botwithus.rs3.events.impl.influx.InfluxGEEvent;
+import net.botwithus.rs3.events.impl.influx.InfluxKillEvent;
 import net.botwithus.rs3.game.Area;
 import net.botwithus.rs3.game.Client;
 import net.botwithus.rs3.game.Coordinate;
+import net.botwithus.rs3.game.Item;
 import net.botwithus.rs3.game.actionbar.ActionBar;
+import net.botwithus.rs3.game.hud.interfaces.Component;
+import net.botwithus.rs3.game.login.LoginManager;
+import net.botwithus.rs3.game.login.World;
 import net.botwithus.rs3.game.movement.Movement;
 import net.botwithus.rs3.game.movement.NavPath;
 import net.botwithus.rs3.game.movement.TraverseEvent;
 import net.botwithus.rs3.game.queries.builders.characters.NpcQuery;
+import net.botwithus.rs3.game.queries.builders.components.ComponentQuery;
+import net.botwithus.rs3.game.queries.builders.items.InventoryItemQuery;
 import net.botwithus.rs3.game.queries.builders.objects.SceneObjectQuery;
+import net.botwithus.rs3.game.queries.builders.worlds.WorldQuery;
 import net.botwithus.rs3.game.queries.results.EntityResultSet;
+import net.botwithus.rs3.game.queries.results.ResultSet;
 import net.botwithus.rs3.game.scene.entities.characters.npc.Npc;
 import net.botwithus.rs3.game.scene.entities.characters.player.LocalPlayer;
+import net.botwithus.rs3.game.scene.entities.characters.player.Player;
 import net.botwithus.rs3.game.scene.entities.object.SceneObject;
+import net.botwithus.rs3.game.vars.VarManager;
 import net.botwithus.rs3.script.Execution;
+import net.botwithus.rs3.script.ImmutableScript;
 import net.botwithus.rs3.script.LoopingScript;
+import net.botwithus.rs3.script.ScriptController;
 import net.botwithus.rs3.script.config.ScriptConfig;
 import net.botwithus.rs3.util.RandomGenerator;
+import net.botwithus.rs3.util.Regex;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 public class CroesusFrontScript extends LoopingScript {
 
@@ -44,15 +58,19 @@ public class CroesusFrontScript extends LoopingScript {
     public boolean mining;
     public boolean woodcutting;
     public boolean fishing;
-
+    public Pattern hunterCape = Regex.getPatternForContainsString("Hunter cape");
     public long startTime;
 
     private List<GuardDetails> guardDetailsList = Arrays.asList(
             new GuardDetails(Arrays.asList("Moulding Varrock guard", "Moulding Lumbridge guard"), Arrays.asList(121760, 121763, 121766, 121769), Arrays.asList(121759, 121762, 121765, 121768), "Mine"),
             new GuardDetails(Arrays.asList("Dead Lumbridge guard", "Dead Varrock guard"), Arrays.asList(121748, 121751, 121754, 121757), Arrays.asList(121747, 121750, 121753, 121756), "Gather"),
             new GuardDetails(Arrays.asList("Colonised Varrock guard", "Colonised Lumbridge guard"), Arrays.asList(28427, 28430, 28433, 28436), Arrays.asList(28426, 28429, 28432, 28435), "Catch"),
-            new GuardDetails(Arrays.asList("Decaying Lumbridge guard", "Decaying Varrock guard"), Arrays.asList(28418, 28421, 28415, 28424), Arrays.asList(28417, 28414, 28423, 28420), "Gather")
+            new GuardDetails(Arrays.asList("Decaying Varrock guard", "Decaying Lumbridge guard"), Arrays.asList(28418, 28421, 28415, 28424), Arrays.asList(28417, 28414, 28423, 28420), "Gather")
     );
+    boolean Hopping;
+    private long startHopTime = System.currentTimeMillis();
+    public int timesHopped;
+
 
     public String getRunTime() {
         long time = System.currentTimeMillis() - startTime;
@@ -61,6 +79,7 @@ public class CroesusFrontScript extends LoopingScript {
         long hours = minutes / 60;
         return String.format("%02d:%02d:%02d", hours, minutes % 60, seconds % 60);
     }
+   public Random random = new Random();
 
     enum BotState {
         FIND_GUARD,
@@ -79,6 +98,32 @@ public class CroesusFrontScript extends LoopingScript {
         if (!runScript) {
             return;
         }
+        Player player = Client.getLocalPlayer();
+
+        if(Client.getGameState() != Client.GameState.LOGGED_IN || player == null)
+            return;
+
+        EntityResultSet<Npc> Blessing = NpcQuery.newQuery().name("Divine blessing").option("Capture").results();
+        if(Blessing.nearest() != null) {
+            Blessing.nearest().interact("Capture");
+            Execution.delay(RandomGenerator.nextInt(3000,7000));
+        }
+        EntityResultSet<Npc> serensprit = NpcQuery.newQuery().name("Seren spirit").option("Capture").results();
+        if(serensprit.nearest() != null) {
+            serensprit.nearest().interact("Capture");
+            Execution.delay(RandomGenerator.nextInt(3000,7000));
+        }  
+        ResultSet<Component> treasureKey = ComponentQuery.newQuery(1473).componentIndex(5).item(24154).option("Claim key").results();
+        if(treasureKey.first() != null) {
+            treasureKey.first().interact("Claim key");
+            Execution.delay(RandomGenerator.nextInt(3000,7000));
+        }
+        if(Hopping && (System.currentTimeMillis() - startHopTime) >= ((random.nextInt(2 * 60 * 60 * 1000) + 60 * 60 * 1000))) {
+            hopworlds();
+            Execution.delayUntil(10000, ()->Client.getGameState() == Client.GameState.LOGGED_IN);
+            startHopTime = System.currentTimeMillis(); // Reset the start time after hopping
+            timesHopped += 1;
+        }
         if (botState == BotState.DROP_SPORES) {
             Drop(Client.getLocalPlayer());
         }else
@@ -87,6 +132,18 @@ public class CroesusFrontScript extends LoopingScript {
         } else if (botState == BotState.HARVEST_GUARD) {
             harvestGuard(Client.getLocalPlayer());
         }
+    }
+
+    public void hopworlds() {
+        if(LoginManager.isLoginInProgress()) {
+            return;
+        }
+        final WorldQuery worlds = WorldQuery.newQuery().members().population(100, 1300).ping(1, 350).mark();
+        World world = worlds.results().random();
+        if(world != null) {
+            LoginManager.hopWorld(world);
+        }
+        Execution.delayWhile(RandomGenerator.nextInt(5000, 10000), () -> LoginManager.isLoginInProgress());
     }
 
     private void findGuard(LocalPlayer localPlayer) {
@@ -154,63 +211,57 @@ public class CroesusFrontScript extends LoopingScript {
         }
     }
     private boolean findAndInteractWithGuard(LocalPlayer localPlayer, GuardDetails guardDetails) {
+        List<Npc> npcs = new ArrayList<>();
+        List<SceneObject> sceneObjects = new ArrayList<>();
+
+        // Gather all NPCs or SceneObjects
         for (String npcName : guardDetails.getNames()) {
-            if (fishing || hunter) { // Assuming all NPCs have "guard" in their name
-                EntityResultSet<Npc> enrichedNpcQuery = NpcQuery.newQuery().name(npcName).results();
-                Npc enrichedGuard = enrichedNpcQuery.stream()
-                        .filter(npc -> guardDetails.getEnrichedNpcIds().contains(npc.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(npc -> npc.distanceTo(localPlayer.getCoordinate())))
-                        .orElse(null);
-                if (enrichedGuard != null) {
-                    interactWithNpc(enrichedGuard, guardDetails.getAction());
-                    return true;
+            if (fishing || hunter) {
+                EntityResultSet<Npc> npcQuery = NpcQuery.newQuery().name(npcName).results();
+                for (Npc npc : npcQuery) {
+                    npcs.add(npc);
                 }
-
-                // If no enriched NPC is found, try to find a non-enriched NPC
-                EntityResultSet<Npc> nonEnrichedNpcQuery = NpcQuery.newQuery().name(npcName).results();
-                Npc nonEnrichedGuard = nonEnrichedNpcQuery.stream()
-                        .filter(npc -> guardDetails.getNonEnrichedNpcIds().contains(npc.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(npc -> npc.distanceTo(localPlayer.getCoordinate())))
-                        .orElse(null);
-                if (nonEnrichedGuard != null) {
-                    interactWithNpc(nonEnrichedGuard, guardDetails.getAction());
-                    return true;
-                }
-            } else { // If it's not an NPC, it must be a SceneObject
-                // First, try to find an enriched SceneObject
-                EntityResultSet<SceneObject> enrichedSceneObjectQuery = SceneObjectQuery.newQuery().name(npcName).results();
-                SceneObject enrichedGuard = enrichedSceneObjectQuery.stream()
-                        .filter(sceneObject -> guardDetails.getEnrichedNpcIds().contains(sceneObject.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(sceneObject -> sceneObject.distanceTo(localPlayer.getCoordinate())))
-                        .orElse(null);
-                if (enrichedGuard != null) {
-                    interactWithSceneObject(enrichedGuard, guardDetails.getAction());
-                    return true;
-                }
-
-                // If no enriched SceneObject is found, try to find a non-enriched SceneObject
-                EntityResultSet<SceneObject> nonEnrichedSceneObjectQuery = SceneObjectQuery.newQuery().name(npcName).results();
-                SceneObject nonEnrichedGuard = nonEnrichedSceneObjectQuery.stream()
-                        .filter(sceneObject -> guardDetails.getNonEnrichedNpcIds().contains(sceneObject.getConfigType().getId()))
-                        .min(Comparator.comparingDouble(sceneObject -> sceneObject.distanceTo(localPlayer.getCoordinate())))
-                        .orElse(null);
-                if (nonEnrichedGuard != null) {
-                    interactWithSceneObject(nonEnrichedGuard, guardDetails.getAction());
-                    return true;
+            } else if (mining || woodcutting) {
+                EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name(npcName).results();
+                for (SceneObject sceneObject : sceneObjectQuery) {
+                    sceneObjects.add(sceneObject);
                 }
             }
         }
-        return false;
-    }
 
-    private void interactWithNpc(Npc npc, String action) {
-        if (Client.getLocalPlayer().getAnimationId() == -1) {
-            println(npc.getOptions());
-            npc.interact(action);
-            println(action);
+        // Sort NPCs or SceneObjects based on whether they are enriched and their distance to the player
+        Npc targetNpc = npcs.stream()
+                .sorted(Comparator.comparing((Npc npc) -> !guardDetails.getEnrichedNpcIds().contains(npc.getConfigType().getId()))
+                        .thenComparing(npc -> npc.distanceTo(localPlayer.getCoordinate())))
+                .findFirst()
+                .orElse(null);
+
+        SceneObject targetSceneObject = sceneObjects.stream()
+                .sorted(Comparator.comparing((SceneObject sceneObject) -> !guardDetails.getEnrichedNpcIds().contains(sceneObject.getConfigType().getId()))
+                        .thenComparing(sceneObject -> sceneObject.distanceTo(localPlayer.getCoordinate())))
+                .findFirst()
+                .orElse(null);
+
+        if (targetNpc != null) {
+            interactWithNpc(targetNpc, guardDetails.getAction());
+            return true;
         }
 
-        println("Found new guard: " + npc.getName());
+        if (targetSceneObject != null) {
+            interactWithSceneObject(targetSceneObject, guardDetails.getAction());
+            return true;
+        }
+
+        return false;
+    }
+    private void interactWithNpc(Npc npc, String action) {
+        if (Client.getLocalPlayer().getAnimationId() == -1) {
+           // println(npc.getOptions());
+            npc.interact(action);
+           // println(action);
+        }
+
+        //println("Found new guard: " + npc.getName());
         botState = BotState.HARVEST_GUARD;
     }
 
@@ -221,7 +272,7 @@ public class CroesusFrontScript extends LoopingScript {
             println(action);
         }
 
-        println("Found new guard: " + sceneObject.getName());
+        //println("Found new guard: " + sceneObject.getName());
         botState = BotState.HARVEST_GUARD;
     }
 
@@ -284,16 +335,40 @@ public class CroesusFrontScript extends LoopingScript {
 
 
     private void harvestGuard(LocalPlayer localPlayer) {
+//        Item results = InventoryItemQuery.newQuery(1464).ids(44550).results().first();
+//
+//        if (results != null) {
+//            // Get the charges of the current Grace of the Elves
+//            int charges = VarManager.getInvVarbit(results.getInventoryType().getId(), results.getSlot(), 30214);
+//
+//            // If the charges are 0, scan the backpack for another Grace of the Elves with charges greater than 0
+//            if (charges == 0) {
+//                println("Grace of the Elves charges are 0, scanning backpack for another Grace of the Elves with charges greater than 0");
+//                for (Item item : Backpack.getItems()) {
+//                    if (item.getId() == 44550) { // Check if the item is Grace of the Elves
+//                        int itemCharges = VarManager.getInvVarbit(item.getInventoryType().getId(), item.getSlot(), 30214);
+//                        if (itemCharges > 0) { // Check if the item has charges
+//                            // Equip the item
+//                            Backpack.interact(item.getName(), "Wear");
+//                            Execution.delayUntil(2000, () -> VarManager.getInvVarbit(1464, 15, 30214) > 0);
+//                            println("Equipped Grace of the Elves with charges: " + itemCharges);
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+//        }
         if (actionTick >= 1) {
             actionTick = 0;
             return;
         }
 
         if (actionTick == 0 && useHunterCape && hunter) {
-            ActionBar.useItem("Hunter cape (t)", "Activate");
+            ActionBar.useItem(hunterCape.toString().toLowerCase(), "Activate");
         }
 
         actionTick++;
+
 
         if (Backpack.isFull())
         {
