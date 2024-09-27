@@ -1,6 +1,8 @@
 package me.gibson;
 
 import net.botwithus.api.game.hud.inventories.Backpack;
+import net.botwithus.api.game.hud.inventories.Equipment;
+import net.botwithus.api.game.hud.inventories.EquipmentInventory;
 import net.botwithus.internal.scripts.ScriptDefinition;
 import net.botwithus.rs3.events.impl.influx.InfluxGEEvent;
 import net.botwithus.rs3.events.impl.influx.InfluxKillEvent;
@@ -27,16 +29,14 @@ import net.botwithus.rs3.game.scene.entities.characters.player.LocalPlayer;
 import net.botwithus.rs3.game.scene.entities.characters.player.Player;
 import net.botwithus.rs3.game.scene.entities.object.SceneObject;
 import net.botwithus.rs3.game.vars.VarManager;
-import net.botwithus.rs3.script.Execution;
-import net.botwithus.rs3.script.ImmutableScript;
-import net.botwithus.rs3.script.LoopingScript;
-import net.botwithus.rs3.script.ScriptController;
+import net.botwithus.rs3.script.*;
 import net.botwithus.rs3.script.config.ScriptConfig;
 import net.botwithus.rs3.util.RandomGenerator;
 import net.botwithus.rs3.util.Regex;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CroesusFrontScript extends LoopingScript {
@@ -58,7 +58,7 @@ public class CroesusFrontScript extends LoopingScript {
     public boolean mining;
     public boolean woodcutting;
     public boolean fishing;
-    public Pattern hunterCape = Regex.getPatternForContainsString("Hunter cape");
+    public Pattern hunterCapePattern = Pattern.compile("Hunter cape( \\(t\\))?|Hooded hunter cape( \\(t\\))?");
     public long startTime;
 
     private List<GuardDetails> guardDetailsList = Arrays.asList(
@@ -364,7 +364,7 @@ public class CroesusFrontScript extends LoopingScript {
         }
 
         if (actionTick == 0 && useHunterCape && hunter) {
-            ActionBar.useItem(hunterCape.toString().toLowerCase(), "Activate");
+            activateHunterCape();
         }
 
         actionTick++;
@@ -391,6 +391,33 @@ public class CroesusFrontScript extends LoopingScript {
         }
     }
 
+    public void activateHunterCape() {
+        // Define the regex pattern to match all variations of the Hunter cape
+        Pattern hunterCapePattern = Pattern.compile("Hunter cape( \\(t\\))?|Hooded hunter cape( \\(t\\))?");
+
+        // Check the backpack
+        for (Item item : Backpack.getItems()) {
+            Matcher matcher = hunterCapePattern.matcher(item.getName());
+            if (matcher.matches()) {
+                ActionBar.useItem(item.getName(), "Activate");
+                ScriptConsole.println("Activated Hunter Cape: " + item.getName());
+                return;
+            }
+        }
+
+        // Check the equipment cape slot
+        Item equippedCape = Equipment.getItemIn(Equipment.Slot.CAPE);
+        if (equippedCape != null) {
+            Matcher matcher = hunterCapePattern.matcher(equippedCape.getName());
+            if (matcher.matches()) {
+                ActionBar.useItem(equippedCape.getName(), "Activate");
+                ScriptConsole.println("Activated Hunter Cape: " + equippedCape.getName());
+                return;
+            }
+        }
+
+        ScriptConsole.println("No Hunter Cape found to activate.");
+    }
 
 
     public BotState getBotState() {
