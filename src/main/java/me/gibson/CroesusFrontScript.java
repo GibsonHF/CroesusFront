@@ -60,10 +60,10 @@ public class CroesusFrontScript extends LoopingScript {
     public Area.Rectangular woodcuttingArea = new Area.Rectangular(new Coordinate(1880, 1261, 0), new Coordinate(1888, 1269, 0));
     public Area.Rectangular fishingArea = new Area.Rectangular(new Coordinate(1885, 1229, 0), new Coordinate(1871, 1237, 0));
 
-    public boolean hunter;
-    public boolean mining;
-    public boolean woodcutting;
-    public boolean fishing;
+    public boolean hunter = false;
+    public boolean mining = false;
+    public boolean woodcutting = false;
+    public boolean fishing = false;
     public long startTime;
 
     private List<GuardDetails> guardDetailsList = Arrays.asList(
@@ -166,14 +166,11 @@ public class CroesusFrontScript extends LoopingScript {
         }
         if (botState == BotState.DROP_SPORES) {
             Drop(Client.getLocalPlayer());
-            return;
         }else
         if (botState == BotState.FIND_GUARD) {
             findGuard(Client.getLocalPlayer());
-            return;
         } else if (botState == BotState.HARVEST_GUARD) {
             harvestGuard(Client.getLocalPlayer());
-            return;
         }
     }
 
