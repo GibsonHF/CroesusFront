@@ -14,13 +14,15 @@ import java.util.Map;
 public class GraphicsContext extends ScriptGraphicsContext {
 
     private CroesusFrontScript script;
-    public int HunterXPGained = 0;
-    public int XPStart = 0;
+    private Map<Skills, Integer> xpStartMap = new HashMap<>();
+    private Map<Skills, Integer> xpGainedMap = new HashMap<>();
 
     public GraphicsContext(ScriptConsole scriptConsole, CroesusFrontScript script) {
         super(scriptConsole);
         this.script = script;
-        this.XPStart = Skills.HUNTER.getSkill().getExperience();
+        for (Skills skill : Skills.values()) {
+            xpStartMap.put(skill, skill.getSkill().getExperience());
+        }
 
     }
 
@@ -47,13 +49,13 @@ public class GraphicsContext extends ScriptGraphicsContext {
                     if(script.hunter)
                     {
                         script.useHunterCape = ImGui.Checkbox("Use Hunter Cape", script.useHunterCape);
-                        if (ImGui.Button("Reset XP gained")) {
-                            HunterXPGained = 0;
-                            script.xpGained = 0;
-                            XPStart = Skills.HUNTER.getSkill().getExperience();
-                        }
-                        ImGui.Text("XP Gained: " + calculateConstructionXPGained() + " XP");
 
+                    }
+                    for (Skills skill : Skills.values()) {
+                        int xpGained = skill.getSkill().getExperience() - xpStartMap.get(skill);
+                        if (xpGained > 0) {
+                            ImGui.Text(skill.name() + " XP Gained: " + calculateXPGained(skill) + " XP");
+                        }
                     }
                     ImGui.Text("My scripts state is: " + script.getBotState());
                     ImGui.Text("Script Runtime: " + script.getRunTime());
@@ -81,6 +83,30 @@ public class GraphicsContext extends ScriptGraphicsContext {
 
     }
 
+
+    public String calculateXPGained(Skills skill) {
+        int xpGained = skill.getSkill().getExperience() - xpStartMap.get(skill);
+        xpGainedMap.put(skill, xpGained);
+        NumberFormat numberFormat = NumberFormat.getInstance();
+        return numberFormat.format(xpGained);
+    }
+
+    public String calculateAverageXPPerHour() {
+        long runTimeInMilliseconds = System.currentTimeMillis() - script.startTime;
+        double runTimeInHours = runTimeInMilliseconds / 1000.0 / 60.0 / 60.0;
+        double totalXpGained = xpGainedMap.values().stream().mapToInt(Integer::intValue).sum();
+        double xpPerHour = totalXpGained / runTimeInHours;
+        NumberFormat numberFormat = NumberFormat.getInstance();
+        return numberFormat.format((int) xpPerHour);
+    }
+
+    public void handleCheckboxSelection(String checkboxName) {
+        script.hunter = checkboxName.equals("Hunter");
+        script.mining = checkboxName.equals("Mining");
+        script.woodcutting = checkboxName.equals("Woodcutting");
+        script.fishing = checkboxName.equals("Fishing");
+    }
+
     public String calculateTimeTillLevel() {
         int currentXp = Skills.HUNTER.getSkill().getExperience();
         int currentLevel = ExperienceTable.getLevelForExperience(currentXp);
@@ -103,37 +129,6 @@ public class GraphicsContext extends ScriptGraphicsContext {
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
-    public String calculateConstructionXPGained() {
-        // Calculate the Construction XP gained
-        HunterXPGained = Skills.HUNTER.getSkill().getExperience() - XPStart;
-
-        // Format the XP gained with commas for thousands and a decimal point
-        NumberFormat numberFormat = NumberFormat.getInstance();
-        String formattedXpGained = numberFormat.format(HunterXPGained);
-
-        return formattedXpGained;
-    }
-
-    public String calculateAverageXPPerHour() {
-        // Calculate the average XP per hour
-        long runTimeInMilliseconds = System.currentTimeMillis() - script.startTime;
-        double runTimeInHours = runTimeInMilliseconds / 1000.0 / 60.0 / 60.0; // Convert runtime from milliseconds to hours
-        double xpPerHour = (double) HunterXPGained / runTimeInHours;
-
-        // Format the XP per hour with commas for thousands and a decimal point
-        NumberFormat numberFormat = NumberFormat.getInstance();
-        String formattedXpPerHour = numberFormat.format((int) xpPerHour);
-
-
-        return formattedXpPerHour;
-    }
-
-    public void handleCheckboxSelection(String checkboxName) {
-        script.hunter = checkboxName.equals("Hunter");
-        script.mining = checkboxName.equals("Mining");
-        script.woodcutting = checkboxName.equals("Woodcutting");
-        script.fishing = checkboxName.equals("Fishing");
-    }
 
     @Override
     public void drawOverlay() {
