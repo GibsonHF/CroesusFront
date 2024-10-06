@@ -139,6 +139,13 @@ public class CroesusFrontScript extends LoopingScript {
                 }
         }
 
+        EntityResultSet<Npc> catalyst = NpcQuery.newQuery().name("Catalyst of alteration").option("Capture").results();
+        if(catalyst.nearest() != null) {
+            catalyst.nearest().interact("Capture");
+            Execution.delay(RandomGenerator.nextInt(1000,5000));
+            return;
+        }
+
         EntityResultSet<Npc> Blessing = NpcQuery.newQuery().name("Divine blessing").option("Capture").results();
         if(Blessing.nearest() != null) {
             Blessing.nearest().interact("Capture");
