@@ -15,7 +15,7 @@ public class GraphicsContext extends ScriptGraphicsContext {
 
     private CroesusFrontScript script;
     public int HunterXPGained = 0;
-    public int XPStart;
+    public int XPStart = 0;
 
     public GraphicsContext(ScriptConsole scriptConsole, CroesusFrontScript script) {
         super(scriptConsole);
@@ -31,6 +31,7 @@ public class GraphicsContext extends ScriptGraphicsContext {
                 if (ImGui.BeginTabItem("Settings", ImGuiWindowFlag.None.getValue())) {
                     script.runScript = ImGui.Checkbox("Run Script", script.runScript);
                     script.Hopping = ImGui.Checkbox("Hopping", script.Hopping);
+                    script.useBikBook = ImGui.Checkbox("Use Bik Book", script.useBikBook);
                     if (ImGui.Checkbox("Hunter", script.hunter)) {
                         handleCheckboxSelection("Hunter");
                     }

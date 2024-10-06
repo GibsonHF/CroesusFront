@@ -12,8 +12,12 @@ import net.botwithus.rs3.game.Coordinate;
 import net.botwithus.rs3.game.Item;
 import net.botwithus.rs3.game.actionbar.ActionBar;
 import net.botwithus.rs3.game.hud.interfaces.Component;
+import net.botwithus.rs3.game.js5.types.ItemType;
+import net.botwithus.rs3.game.js5.types.configs.ConfigManager;
 import net.botwithus.rs3.game.login.LoginManager;
 import net.botwithus.rs3.game.login.World;
+import net.botwithus.rs3.game.minimenu.MiniMenu;
+import net.botwithus.rs3.game.minimenu.actions.ComponentAction;
 import net.botwithus.rs3.game.movement.Movement;
 import net.botwithus.rs3.game.movement.NavPath;
 import net.botwithus.rs3.game.movement.TraverseEvent;
@@ -39,13 +43,15 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static net.botwithus.rs3.script.ScriptConsole.println;
+
 public class CroesusFrontScript extends LoopingScript {
 
     public boolean runScript = false;
 
     public int actionTick = 0;
-    public int xpGained;
-    public boolean useHunterCape;
+    public int xpGained = 0;
+    public boolean useHunterCape = false;
     private BotState botState = BotState.FIND_GUARD;
 
     public Area.Rectangular sporeArea = new Area.Rectangular(new Coordinate(1916, 1223, 0), new Coordinate(1908, 1231, 0));
@@ -58,7 +64,6 @@ public class CroesusFrontScript extends LoopingScript {
     public boolean mining;
     public boolean woodcutting;
     public boolean fishing;
-    public Pattern hunterCapePattern = Pattern.compile("Hunter cape( \\(t\\))?|Hooded hunter cape( \\(t\\))?");
     public long startTime;
 
     private List<GuardDetails> guardDetailsList = Arrays.asList(
@@ -67,9 +72,10 @@ public class CroesusFrontScript extends LoopingScript {
             new GuardDetails(Arrays.asList("Colonised Varrock guard", "Colonised Lumbridge guard"), Arrays.asList(28427, 28430, 28433, 28436), Arrays.asList(28426, 28429, 28432, 28435), "Catch"),
             new GuardDetails(Arrays.asList("Decaying Varrock guard", "Decaying Lumbridge guard"), Arrays.asList(28418, 28421, 28415, 28424), Arrays.asList(28417, 28414, 28423, 28420), "Gather")
     );
-    boolean Hopping;
+    boolean Hopping = false;
     private long startHopTime = System.currentTimeMillis();
-    public int timesHopped;
+    public int timesHopped = 0;
+    public boolean useBikBook = false;
 
 
     public String getRunTime() {
@@ -103,20 +109,47 @@ public class CroesusFrontScript extends LoopingScript {
         if(Client.getGameState() != Client.GameState.LOGGED_IN || player == null)
             return;
 
+        if(useBikBook)
+        {
+            Item book = Equipment.getItemIn(Equipment.Slot.POCKET);
+            if(!isBookActive(94, book))
+            {
+                if(getBookTimeRemaining(94, book) != 0) {
+                    ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
+                    boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
+                    Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                    if (success) {
+                        Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                    } else {
+                        println("Failed bik turn on");
+                    }
+                }else {
+                    ScriptConsole.println("No time remaining on book, Please refill");
+                    this.useBikBook = false;
+                }
+            }
+        }else if(!useBikBook && isBookActive(94, Equipment.getItemIn(Equipment.Slot.POCKET))){
+                boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
+                Execution.delay(RandomGenerator.nextInt(1000, 2000));
+
+                if (success) {
+                    Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                } else {
+                    println("Failed bik turn off");
+                }
+        }
+
         EntityResultSet<Npc> Blessing = NpcQuery.newQuery().name("Divine blessing").option("Capture").results();
         if(Blessing.nearest() != null) {
             Blessing.nearest().interact("Capture");
             Execution.delay(RandomGenerator.nextInt(3000,7000));
+            return;
         }
         EntityResultSet<Npc> serensprit = NpcQuery.newQuery().name("Seren spirit").option("Capture").results();
         if(serensprit.nearest() != null) {
             serensprit.nearest().interact("Capture");
             Execution.delay(RandomGenerator.nextInt(3000,7000));
-        }  
-        ResultSet<Component> treasureKey = ComponentQuery.newQuery(1473).componentIndex(5).item(24154).option("Claim key").results();
-        if(treasureKey.first() != null) {
-            treasureKey.first().interact("Claim key");
-            Execution.delay(RandomGenerator.nextInt(3000,7000));
+            return;
         }
         if(Hopping && (System.currentTimeMillis() - startHopTime) >= ((random.nextInt(2 * 60 * 60 * 1000) + 60 * 60 * 1000))) {
             hopworlds();
@@ -126,11 +159,14 @@ public class CroesusFrontScript extends LoopingScript {
         }
         if (botState == BotState.DROP_SPORES) {
             Drop(Client.getLocalPlayer());
+            return;
         }else
         if (botState == BotState.FIND_GUARD) {
             findGuard(Client.getLocalPlayer());
+            return;
         } else if (botState == BotState.HARVEST_GUARD) {
             harvestGuard(Client.getLocalPlayer());
+            return;
         }
     }
 
@@ -332,7 +368,32 @@ public class CroesusFrontScript extends LoopingScript {
     }
 
 
+    public static int getBookTimeRemaining(int containerId, Item item) {
+        if (item == null)
+            return 0;
+        ItemType type = ConfigManager.getItemType(item.getId());
+        if (type.getCategory() != 2804 && type.getCategory() != 3794)
+            return 0;
+        if (isBookActive(containerId, item)) {
+            if (type.getCategory() == 2804)
+                return VarManager.getVarbitValue(17234);
+            return VarManager.getVarbitValue(30604);
+        }
+        if (type.getCategory() == 2804)
+            return VarManager.getInvVarbit(containerId, item.getSlot(), 17233);
+        return VarManager.getInvVarbit(containerId, item.getSlot(), 30603);
+    }
 
+    public static boolean isBookActive(int containerId, Item item) {
+        if (item == null)
+            return false;
+        ItemType type = ConfigManager.getItemType(item.getId());
+        if (type.getCategory() != 2804 && type.getCategory() != 3794)
+            return false;
+        if (type.getCategory() == 2804)
+            return VarManager.getInvVarbit(containerId, item.getSlot(), 17232) == 1;
+        return VarManager.getInvVarbit(containerId, item.getSlot(), 30602) == 1;
+    }
 
     private void harvestGuard(LocalPlayer localPlayer) {
 //        Item results = InventoryItemQuery.newQuery(1464).ids(44550).results().first();
