@@ -135,7 +135,7 @@ public class GraphicsContext extends ScriptGraphicsContext {
         super.drawOverlay();
     }
     public class ExperienceTable {
-        private static final Map<Integer, Integer> experienceForLevel = new HashMap<>();
+        private static final Map<Integer, Integer> experienceForLevel = new HashMap<Integer, Integer>();
 
         static {
             experienceForLevel.put(100, 14391160);

@@ -109,34 +109,42 @@ public class CroesusFrontScript extends LoopingScript {
         if(Client.getGameState() != Client.GameState.LOGGED_IN || player == null)
             return;
 
-        if(useBikBook)
+        Item book = Equipment.getItemIn(Equipment.Slot.POCKET);
+        if(book != null)
         {
-            Item book = Equipment.getItemIn(Equipment.Slot.POCKET);
-            if(!isBookActive(94, book))
-            {
-                if(getBookTimeRemaining(94, book) != 0) {
-                    ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
-                    boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
-                    Execution.delay(RandomGenerator.nextInt(1000, 2000));
-                    if (success) {
+            if(useBikBook){
+                if(!isBookActive(94, book))
+                {
+                    if(getBookTimeRemaining(94, book) != 0) {
+                        ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
+                        boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
                         Execution.delay(RandomGenerator.nextInt(1000, 2000));
-                    } else {
-                        println("Failed bik turn on");
+                        if (success) {
+                            Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                        } else {
+                            println("Failed bik turn on");
+                        }
+                    }else {
+                        ScriptConsole.println("No time remaining on book, Please refill");
                     }
-                }else {
-                    ScriptConsole.println("No time remaining on book, Please refill");
-                    this.useBikBook = false;
+                }
+            }else {
+                if(isBookActive(94, book))
+                {
+                    if(getBookTimeRemaining(94, book) != 0) {
+                        ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
+                        boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
+                        Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                        if (success) {
+                            Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                        } else {
+                            println("Failed bik turn off");
+                        }
+                    }else {
+                        ScriptConsole.println("No time remaining on book, Please refill");
+                    }
                 }
             }
-        }else if(!useBikBook && isBookActive(94, Equipment.getItemIn(Equipment.Slot.POCKET))){
-                boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
-                Execution.delay(RandomGenerator.nextInt(1000, 2000));
-
-                if (success) {
-                    Execution.delay(RandomGenerator.nextInt(1000, 2000));
-                } else {
-                    println("Failed bik turn off");
-                }
         }
 
         EntityResultSet<Npc> catalyst = NpcQuery.newQuery().name("Catalyst of alteration").option("Capture").results();
@@ -149,13 +157,13 @@ public class CroesusFrontScript extends LoopingScript {
         EntityResultSet<Npc> Blessing = NpcQuery.newQuery().name("Divine blessing").option("Capture").results();
         if(Blessing.nearest() != null) {
             Blessing.nearest().interact("Capture");
-            Execution.delay(RandomGenerator.nextInt(3000,7000));
+            Execution.delay(RandomGenerator.nextInt(1000,5000));
             return;
         }
         EntityResultSet<Npc> serensprit = NpcQuery.newQuery().name("Seren spirit").option("Capture").results();
         if(serensprit.nearest() != null) {
             serensprit.nearest().interact("Capture");
-            Execution.delay(RandomGenerator.nextInt(3000,7000));
+            Execution.delay(RandomGenerator.nextInt(1000,5000));
             return;
         }
         if(Hopping && (System.currentTimeMillis() - startHopTime) >= ((random.nextInt(2 * 60 * 60 * 1000) + 60 * 60 * 1000))) {
