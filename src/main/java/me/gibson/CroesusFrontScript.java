@@ -38,6 +38,7 @@ import net.botwithus.rs3.script.config.ScriptConfig;
 import net.botwithus.rs3.util.RandomGenerator;
 import net.botwithus.rs3.util.Regex;
 
+import javax.script.ScriptContext;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -106,46 +107,45 @@ public class CroesusFrontScript extends LoopingScript {
         }
         Player player = Client.getLocalPlayer();
 
-        if(Client.getGameState() != Client.GameState.LOGGED_IN || player == null)
+        if (Client.getGameState() != Client.GameState.LOGGED_IN || player == null)
             return;
 
-        Item book = Equipment.getItemIn(Equipment.Slot.POCKET);
-        if(book != null)
-        {
-            if(useBikBook){
-                if(!isBookActive(94, book))
-                {
-                    if(getBookTimeRemaining(94, book) != 0) {
-                        ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
-                        boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
+        if (useBikBook) {
+            Item book = Equipment.getItemIn(Equipment.Slot.POCKET);
+            if (book == null) {
+                ScriptConsole.println("No book in pocket, Please insert");
+                return;
+            }
+            if (!isBookActive(94, book)) {
+                if (getBookTimeRemaining(94, book) != 0) {
+                    ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
+                    boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
+                    Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                    if (success) {
                         Execution.delay(RandomGenerator.nextInt(1000, 2000));
-                        if (success) {
-                            Execution.delay(RandomGenerator.nextInt(1000, 2000));
-                        } else {
-                            println("Failed bik turn on");
-                        }
-                    }else {
-                        ScriptConsole.println("No time remaining on book, Please refill");
+                    } else {
+                        println("Failed bik turn on");
                     }
+                } else {
+                    ScriptConsole.println("No time remaining on book, Please refill");
                 }
-            }else {
-                if(isBookActive(94, book))
-                {
-                    if(getBookTimeRemaining(94, book) != 0) {
-                        ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
-                        boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
+            } else {
+            if (isBookActive(94, book)) {
+                if (getBookTimeRemaining(94, book) != 0) {
+                    ScriptConsole.println("containedId: " + Equipment.Slot.POCKET.getIndex() + " bookId: " + book.getId());
+                    boolean success = MiniMenu.interact(ComponentAction.COMPONENT.getType(), 2, 17, 95944719);
+                    Execution.delay(RandomGenerator.nextInt(1000, 2000));
+                    if (success) {
                         Execution.delay(RandomGenerator.nextInt(1000, 2000));
-                        if (success) {
-                            Execution.delay(RandomGenerator.nextInt(1000, 2000));
-                        } else {
-                            println("Failed bik turn off");
-                        }
-                    }else {
-                        ScriptConsole.println("No time remaining on book, Please refill");
+                    } else {
+                        println("Failed bik turn off");
                     }
+                } else {
+                    ScriptConsole.println("No time remaining on book, Please refill");
                 }
             }
         }
+    }
 
         EntityResultSet<Npc> catalyst = NpcQuery.newQuery().name("Catalyst of alteration").option("Capture").results();
         if(catalyst.nearest() != null) {
